@@ -10,6 +10,7 @@
 #define MAX_VEHICLES2 5
 
 void mainMenu();
+void customerLogin();
 void customerMenu();
 void rentVehicleMenu();
 void employeeMenu();
@@ -154,7 +155,7 @@ void customerLogin() {
             
             if(strcmp(userName,customer[i].password)==0)
             {
-                customerMenu();
+                customerMenu(customer);
             }
           } while(1);
           
@@ -172,8 +173,8 @@ void customerLogin() {
     } while(1);
 }
 
-void customerMenu() {
-  
+void customerMenu(customer customer[]) {
+      int choice;
       do {
 
         printf("\n\n\n\n\n\n\n\n\n");
@@ -184,7 +185,8 @@ void customerMenu() {
         printf("\t\t\t\t\t      1. RENT A VEHICLE\n");
         printf("\t\t\t\t\t      2. DETAILS OF YOUR RENTED VEHICLES\n");
         printf("\t\t\t\t\t      3. RETURN A RENTED VEHICLE\n");
-        printf("\t\t\t\t\t      4. BACK\n");
+        printf("\t\t\t\t\t      4. ACCOUNT SETTINGS\n");
+        printf("\t\t\t\t\t      5. BACK\n");
         printf("\t\t\t\t\t      Enter your choice: ");
         scanf("%d", &choice);
 
@@ -203,13 +205,16 @@ void customerMenu() {
                 returnVehicle(customerId);
                 break;
             case 4:
+                accountSettings(customer)
+                break;
+            case 5:
                 printf("Returning to Main Menu...\n");
                 break;
             default:
                 printf("Invalid choice. Please try again.\n");
         }
         clearScreen();
-    } while (choice != 4);
+    } while (choice != 5);
 }
 
 void rentVehicleMenu() {
@@ -289,6 +294,24 @@ void rentVehicleMenu() {
 
     } while (choice != 3);
     clearScreen();
+}
+
+void accountSettings() {
+    int choice;
+    
+    do {
+        printf("\n\n\n\n\n\n\n\n\n");
+        printf("  \t\t\t\t\t\t -------------------\n");
+        printf(" \t\t\t\t\t\t|  ACCOUNT SETTINGS  |\n");
+        printf("  \t\t\t\t\t\t -------------------\n");
+        printf("\t\t\t\t\t      1. RENT A VEHICLE\n");
+        printf("\t\t\t\t\t      2. DETAILS OF YOUR RENTED VEHICLES\n");
+        printf("\t\t\t\t\t      3. RETURN A RENTED VEHICLE\n");
+        printf("\t\t\t\t\t      4. ACCOUNT SETTINGS\n");
+        printf("\t\t\t\t\t      5. BACK\n");
+        printf("\t\t\t\t\t      Enter your choice: ");
+        scanf("%d", &choice);
+    } while (choice!=);   
 }
 
 void employeeMenu() {
