@@ -4,19 +4,74 @@
 #include <string.h>
 #include <unistd.h>
 
+#define VEHICLE_FILE "vehicles.txt"
+
 #define MAX_CUSTOMERS 100
+#define MAX_EMPLOYEE 100
 #define MAX_TRANSACTIONS 100
 #define MAX_VEHICLES 10
 #define MAX_VEHICLES2 5
 
-void mainMenu();
-void customerLogin();
-void customerMenu();
+typedef struct {
+    char userName[30];
+    char password[30];
+} customer;
+
+// Transaction structure
+typedef struct {
+    char vehicleModel[50];
+    int daysRented;
+    float price;
+    char startDateTime[40];
+    char returnDateTime[40];
+} Transaction;
+
+typedef struct {
+  
+    // Vehicle Information
+    char make[50];
+    char model[50];
+    int year;
+    char color[20];
+    char licensePlate[20];
+    char vin[20]; // Vehicle Identification Number
+    char maintenanceHistory[500];
+    
+    //Customer Information
+    char customerName[100];
+    char contactInfo[100];
+    char driversLicense[20];
+    char paymentDetails[100];
+    char rentalHistory[500];
+    
+    // Rental Agreement Details
+    double rentalRate;
+    char termsAndConditions[1000];
+    char additionalServices[500];
+    double mileage;
+    double fuelUsage;
+    char reportedIncidents[500];
+    
+} vehicle;
+
+typedef struct {
+    char name[50];
+    char role[20];
+    int hoursWorked;
+    float salary;
+    char contractStart[10];
+    char contractEnd[10];
+} employee;
+
+void mainMenu(customer customer[]);
+void customerLogin(customer customer[]);
+void customerMenu(customer customer[], int num);
+void accountSettings(customer customer[], int num);
 void rentVehicleMenu();
 void employeeMenu();
 void cashierMenu();
 void maintenanceMenu();
-void ownerMenu();
+void ownerMenu(vehicle vehicle[]);
 
 void rentToOwnFeature();
 void standardRentFeature();
@@ -29,15 +84,16 @@ void repairVehicle();
 void addTransaction(int vehicleChoice, int rentalDays);
 void formatDate(time_t rawTime, char *formattedDate);
 
+int loadVehicles(vehicle vehicle[]);
+void addVehicle(vehicle vehicle[], int *index);
+void deleteVehicle(vehicle vehicle[]);
+void profitAnalytics(vehicle vehicle[]);
+void hireEmployee(employee employee[]);
+void manageEmployee(employee employee[]);
+
 void clearScreen() {
     system("cls");
 }
-
-typedef struct {
-    char userName[30];
-    char password[30];
-} customer;
-
 
 // Vehicle models
 char *vehicleNames[MAX_VEHICLES] = {
@@ -54,14 +110,6 @@ int vehicleStock[MAX_VEHICLES];
 int vehicleStock2[MAX_VEHICLES2];
 int customerIDs[10] = {1101, 1102, 1103, 1104, 1105, 1106, 1107, 1108, 1109, 1110};
 
-// Transaction structure
-typedef struct {
-    char vehicleModel[50];
-    int daysRented;
-    char startDateTime[40];
-    char returnDateTime[40];
-} Transaction;
-
 Transaction transactions[MAX_TRANSACTIONS];
 int transactionCount = 0;
 
@@ -72,7 +120,9 @@ int main() {
     }
     for (int i = 0; i < MAX_VEHICLES2; i++) {
     vehicleStock2[i] = rand() % 3 + 3; // mo generate random stock between 3 and 5
-    }
+    
+    
+    customer customer[MAX_CUSTOMERS];
 
     printf("\n\n\n\n\n\n\n\n\n\n\n\n");
     printf("\t\t\t\t\t    ----------------------------\n");
@@ -80,13 +130,14 @@ int main() {
     printf("\t\t\t\t\t    ----------------------------\n");
 
     sleep(4);
-    mainMenu();
+    mainMenu(customer);
     return 0;
+    }
 }
 
-void mainMenu() {
+void mainMenu(customer customer[]) {
     int choice;
-
+    vehicle vehicle[MAX_VEHICLES];
     clearScreen();
 
     do {
@@ -104,13 +155,13 @@ void mainMenu() {
 
         switch (choice) {
             case 1:
-                customerLogin();
+                customerLogin(customer);
                 break;
             case 2:
                 employeeMenu();
                 break;
             case 3:
-                ownerMenu();
+                ownerMenu(vehicle);
                 break;
             case 4:
                 printf("Exiting... Have a good day!\n");
@@ -122,12 +173,10 @@ void mainMenu() {
     } while (choice != 4);
 }
 
-void customerLogin() {
+void customerLogin(customer customer[]) {
     int choice, customerId;
     char userName[30];
     char password[30];
-    
-    customer customer[MAX_CUSTOMERS];
 
     clearScreen();
     
@@ -155,7 +204,7 @@ void customerLogin() {
             
             if(strcmp(userName,customer[i].password)==0)
             {
-                customerMenu(customer);
+                customerMenu(customer,i);
             }
           } while(1);
           
@@ -173,8 +222,8 @@ void customerLogin() {
     } while(1);
 }
 
-void customerMenu(customer customer[]) {
-      int choice;
+void customerMenu(customer customer[], int num) {
+      int choice, customerId;
       do {
 
         printf("\n\n\n\n\n\n\n\n\n");
@@ -205,7 +254,7 @@ void customerMenu(customer customer[]) {
                 returnVehicle(customerId);
                 break;
             case 4:
-                accountSettings(customer)
+                accountSettings(customer, num);
                 break;
             case 5:
                 printf("Returning to Main Menu...\n");
@@ -296,22 +345,87 @@ void rentVehicleMenu() {
     clearScreen();
 }
 
-void accountSettings() {
+void accountSettings(customer customer[], int num) {
     int choice;
+    char oldPassword[30];
+    char newPassword[30];
+    char confirmPassword[30];
     
     do {
         printf("\n\n\n\n\n\n\n\n\n");
         printf("  \t\t\t\t\t\t -------------------\n");
         printf(" \t\t\t\t\t\t|  ACCOUNT SETTINGS  |\n");
         printf("  \t\t\t\t\t\t -------------------\n");
-        printf("\t\t\t\t\t      1. RENT A VEHICLE\n");
-        printf("\t\t\t\t\t      2. DETAILS OF YOUR RENTED VEHICLES\n");
-        printf("\t\t\t\t\t      3. RETURN A RENTED VEHICLE\n");
-        printf("\t\t\t\t\t      4. ACCOUNT SETTINGS\n");
-        printf("\t\t\t\t\t      5. BACK\n");
+        printf("\t\t\t\t\t      1. CHANGE USERNAME\n");
+        printf("\t\t\t\t\t      2. CHANGE PASSWORD\n");
+        printf("\t\t\t\t\t      3. BACK\n");
         printf("\t\t\t\t\t      Enter your choice: ");
         scanf("%d", &choice);
-    } while (choice!=);   
+        
+        if(choice==1) {
+          printf("\n\n\n\n\n\n\n\n\n");
+          printf("  \t\t\t\t\t\t -------------------\n");
+          printf(" \t\t\t\t\t\t|  CHANGE ACCOUNT USERNAME  |\n");
+          printf("  \t\t\t\t\t\t -------------------\n");
+          printf("\t\t\t\t\t      NEW USERNAME:\n");
+          ;
+          
+          if(scanf("%29s", customer[num].userName)==1) {
+                printf("\n\n\n\n\n\n\n\n\n");
+                printf("  \t\t\t\t\t\t -------------------\n");
+                printf(" \t\t\t\t\t\t|  USERNAME CHANGED SUCCESSFULLY!  |\n");
+                printf("  \t\t\t\t\t\t -------------------\n");
+                printf("\t\t\t\t\t      NEW USERNAME:%s\n", customer[num].userName);
+          } else {
+              printf("\n\n\n\n\n\n\n\n\n");
+              printf("  \t\t\t\t\t\t -------------------\n");
+              printf(" \t\t\t\t\t\t|  ERROR: UNABLE TO READ INPUT   |\n");
+              printf("  \t\t\t\t\t\t -------------------\n");
+            }
+        } else if(choice==2) {
+            printf("\n\n\n\n\n\n\n\n\n");
+            printf("  \t\t\t\t\t\t -------------------\n");
+            printf(" \t\t\t\t\t\t|  CHANGE ACCOUNT PASSWORD  |\n");
+            printf("  \t\t\t\t\t\t -------------------\n");
+        
+            // Input the old password
+            printf("\t\t\t\t\t      Enter OLD PASSWORD: ");
+            scanf("%29s", oldPassword);
+
+            // Check if the old password matches
+            if (strcmp(oldPassword, customer[num].password) == 0) {
+                // Input new password
+                printf("\t\t\t\t\t      Enter NEW PASSWORD: ");
+                scanf("%29s", newPassword);
+
+                // Confirm new password
+                printf("\t\t\t\t\t      Confirm NEW PASSWORD: ");
+                scanf("%29s", confirmPassword);
+
+                // Check if new password matches confirmation
+                if (strcmp(newPassword, confirmPassword) == 0) {
+                    // Update the password
+                    strcpy(customer[num].password, newPassword);
+
+                    printf("\n\n\n\n\n\n\n\n\n");
+                    printf("  \t\t\t\t\t\t -------------------\n");
+                    printf(" \t\t\t\t\t\t|  PASSWORD CHANGED SUCCESSFULLY!  |\n");
+                    printf("  \t\t\t\t\t\t -------------------\n");
+                } else {
+                    printf("\n\n\n\n\n\n\n\n\n");
+                    printf("  \t\t\t\t\t\t -------------------\n");
+                    printf(" \t\t\t\t\t\t|  ERROR: PASSWORDS DO NOT MATCH!  |\n");
+                    printf("  \t\t\t\t\t\t -------------------\n");
+                }
+            } else {
+                printf("\n\n\n\n\n\n\n\n\n");
+                printf("  \t\t\t\t\t\t -------------------\n");
+                printf(" \t\t\t\t\t\t|  ERROR: INCORRECT OLD PASSWORD!  |\n");
+                printf("  \t\t\t\t\t\t -------------------\n");
+           }
+        }
+    } while (choice!=3);  
+    
 }
 
 void employeeMenu() {
@@ -413,15 +527,164 @@ void maintenanceMenu() {
     } while (choice != 2);
 }
 
-void ownerMenu() {
+void ownerMenu(vehicle vehicle[]) {
 
+    int choice;
+    int vehicleCount = loadVehicles(vehicle);
+    employee employee[MAX_EMPLOYEE];
     clearScreen();
 
     printf("\n\n\n\n\n\n\n\n\n");
     printf(" \t\t\t\t\t\t --------------\n");
     printf(" \t\t\t\t\t\t| OWNER'S MENU |\n");
     printf("  \t\t\t\t\t\t--------------\n");
-    printf("Feature coming soon...\n");
+    printf("\t\t\t\t\t     1. ADD A VEHICLE\n");
+    printf("\t\t\t\t\t     2. DELETE VEHICLE\n");
+    printf("\t\t\t\t\t     3. PROFIT ANALYTICS\n");
+    printf("\t\t\t\t\t     4. HIRE AN EMPLOYEE\n");
+    printf("\t\t\t\t\t     5. MANAGE YOUR EMPLOYEES\n");
+    printf("\t\t\t\t\t     6. BACK\n");
+    printf("\t\t\t\t\t     Enter your choice: ");
+    scanf("%d", &choice);
+    
+    switch(choice) {
+      case 1:
+        addVehicle(vehicle, &vehicleCount);
+        break;
+      case 2:
+        deleteVehicle(vehicle);
+        break;
+      case 3:
+        profitAnalytics(vehicle);
+        break;
+      case 4:
+        hireEmployee(employee);
+        break;
+      case 5:
+        manageEmployee(employee);
+        break;
+      default:
+        printf("\t\t\t\t\t     INVALID CHOICE. PLEASE TRY AGAIN");
+        break;
+    }
+}
+
+int loadVehicles(vehicle vehicle[]) {
+    FILE *file = fopen(VEHICLE_FILE, "r");
+    if (file == NULL) {
+        printf("No previous data found. Starting fresh.\n");
+        return 0;
+    }
+
+    int count = 0;
+    while (fscanf(file, "%49[^,],%49[^,],%d,%19[^,],%19[^,],%19[^,],%99[^,],%99[^,],%49[^,],%lf\n",
+                  vehicle[count].make,
+                  vehicle[count].model,
+                  &vehicle[count].year,
+                  vehicle[count].color,
+                  vehicle[count].licensePlate,
+                  vehicle[count].vin,
+                  vehicle[count].customerName,
+                  vehicle[count].contactInfo,
+                  vehicle[count].driversLicense,
+                  &vehicle[count].rentalRate) == 10) {
+        count++;
+        if (count >= MAX_VEHICLES) {
+            printf("Reached maximum vehicle storage capacity.\n");
+            break;
+        }
+    }
+
+    fclose(file);
+    printf("Data loaded from file successfully. %d records found.\n", count);
+    return count;
+}
+
+void addVehicle(vehicle vehicle[], int *index) {
+  
+    if (*index >= MAX_VEHICLES) {
+        printf("Vehicle storage is full.\n");
+        return;
+    }
+
+    printf("Enter Vehicle Make: ");
+    fgets(vehicle[*index].make, sizeof(vehicle[*index].make), stdin);
+    vehicle[*index].make[strcspn(vehicle[*index].make, "\n")] = '\0';
+
+    printf("Enter Vehicle Model: ");
+    fgets(vehicle[*index].model, sizeof(vehicle[*index].model), stdin);
+    vehicle[*index].model[strcspn(vehicle[*index].model, "\n")] = '\0';
+
+    printf("Enter Vehicle Year: ");
+    scanf("%d", &vehicle[*index].year);
+    getchar();
+
+    printf("Enter Vehicle Color: ");
+    fgets(vehicle[*index].color, sizeof(vehicle[*index].color), stdin);
+    vehicle[*index].color[strcspn(vehicle[*index].color, "\n")] = '\0';
+
+    printf("Enter License Plate: ");
+    fgets(vehicle[*index].licensePlate, sizeof(vehicle[*index].licensePlate), stdin);
+    vehicle[*index].licensePlate[strcspn(vehicle[*index].licensePlate, "\n")] = '\0';
+
+    printf("Enter VIN: ");
+    fgets(vehicle[*index].vin, sizeof(vehicle[*index].vin), stdin);
+    vehicle[*index].vin[strcspn(vehicle[*index].vin, "\n")] = '\0';
+
+    printf("Enter Customer Name: ");
+    fgets(vehicle[*index].customerName, sizeof(vehicle[*index].customerName), stdin);
+    vehicle[*index].customerName[strcspn(vehicle[*index].customerName, "\n")] = '\0';
+
+    printf("Enter Contact Information: ");
+    fgets(vehicle[*index].contactInfo, sizeof(vehicle[*index].contactInfo), stdin);
+    vehicle[*index].contactInfo[strcspn(vehicle[*index].contactInfo, "\n")] = '\0';
+
+    printf("Enter Driver's License: ");
+    fgets(vehicle[*index].driversLicense, sizeof(vehicle[*index].driversLicense), stdin);
+    vehicle[*index].driversLicense[strcspn(vehicle[*index].driversLicense, "\n")] = '\0';
+
+    printf("Enter Rental Rate: ");
+    scanf("%lf", &vehicle[*index].rentalRate);
+    getchar();
+
+    // Save the new vehicle data directly to the file
+    FILE *file = fopen(VEHICLE_FILE, "a");
+    if (file == NULL) {
+        perror("Error opening file");
+        return;
+    }
+
+    fprintf(file, "%s,%s,%d,%s,%s,%s,%s,%s,%s,%.2lf\n",
+            vehicle[*index].make,
+            vehicle[*index].model,
+            vehicle[*index].year,
+            vehicle[*index].color,
+            vehicle[*index].licensePlate,
+            vehicle[*index].vin,
+            vehicle[*index].customerName,
+            vehicle[*index].contactInfo,
+            vehicle[*index].driversLicense,
+            vehicle[*index].rentalRate);
+
+    fclose(file);
+    (*index)++;
+    printf("Vehicle added and saved successfully!\n");
+}
+
+void deleteVehicle(vehicle vehicle[]) {
+  
+}
+
+void profitAnalytics(vehicle vehicle[]) {
+  printf("Features Coming Soon");
+}
+
+void hireEmployee(employee employee[]) {
+  printf("Features Coming Soon");
+}
+
+void manageEmployee(employee employee[]) {
+  printf("Features Coming Soon");
 }
 
 void rentedVehicleDetails(int customerId) {
