@@ -12,6 +12,7 @@
 
 #define MAX_CUSTOMERS 100
 #define MAX_EMPLOYEE 100
+#define MAX_VEHICLES 100
 #define MAX_CASHIERS 50
 #define MAX_MAINTENANCE 50
 
@@ -52,7 +53,6 @@ typedef struct {
     char color[20];
     char licensePlate[20];
     char vin[20];
-    double totalPayment;
     int seatCapacity;
     time_t rentedTime;
     time_t returnTime;
@@ -61,6 +61,9 @@ typedef struct {
     double pricing[11];   // Pricing for each rental duration
     char rentToOwnTerms[200];  // Rental-to-own rules and terms
     double interestRate;       // Interest rate for overdue payments
+    double totalPayment;
+    double interestPrice;
+    double finalPrice;
     double ownPrice;           // Price for owning the car after rental period
 } vehicle;
 
@@ -81,7 +84,6 @@ void mainMenu(customer customer[]);
 void customerLogin(customer customer[]);
 void customerMenu(customer customer[], int num);
 void accountSettings(customer customer[], int num);
-void displayVehicles(vehicle vehicles[], int count);
 void rentVehicleMenu(vehicle vehicle[], int vehicleCount, customer customer[], int customerIndex);
 void signUpCashier();
 void loginCashier();
@@ -171,7 +173,7 @@ char *formatTime(time_t timeValue) {
 
 int main() {
     // Set up the signal handler to save the time when the program exits
-    signal(SIGINT, saveTimeOnExit);
+    signal(SIGINT, saveTime);
 
     // Load the last saved time or initialize to the current time
     loadLastTrackedTime();
@@ -536,18 +538,18 @@ void rentVehicleMenu(vehicle vehicle[], int vehicleCount, customer customer[], i
     clearScreen();
 }
 
-void rentToOwnMenu(vehicle vehicles[], int vehicleCount, customer customers[], int customerIndex) {
-  if (vehicleCount == 0) {
+void rentToOwnMenu(vehicle vehicle[], int vehicleCount, customer customer[], int customerIndex) {
+    if (vehicleCount == 0) {
         printf("No vehicles available for Rent to Own.\n");
         return;
-  }
+    }
 
     // Display vehicle options for rent-to-own
     printf("\n--- Rent-to-Own Vehicles ---\n");
     for (int i = 0; i < vehicleCount; i++) {
-        if (!vehicles[i].isRented) {
+        if (!vehicle[i].isRented) {
             printf("%d. %s %s (%d) - Price to Own: %.2lf\n", i + 1,
-                   vehicles[i].make, vehicles[i].model, vehicles[i].year, vehicles[i].ownPrice);
+                   vehicle[i].make, vehicle[i].model, vehicle[i].year, vehicle[i].ownPrice);
         }
     }
 
@@ -556,74 +558,73 @@ void rentToOwnMenu(vehicle vehicles[], int vehicleCount, customer customers[], i
     scanf("%d", &choice);
     getchar(); // Clear newline from input buffer
 
-    if (choice < 1 || choice > vehicleCount || vehicles[choice - 1].isRented) {
+    if (choice < 1 || choice > vehicleCount || vehicle[choice - 1].isRented) {
         printf("Invalid choice or vehicle is already rented.\n");
         return;
     }
 
     int index = choice - 1;
 
-    // Directly displaying the vehicle details within the rent-to-own menu
+    // Display vehicle details
     printf("\n--- Vehicle Details ---\n");
-    printf("Make: %s\n", vehicles[index].make);
-    printf("Model: %s\n", vehicles[index].model);
-    printf("Year: %d\n", vehicles[index].year);
-    printf("Color: %s\n", vehicles[index].color);
-    printf("License Plate: %s\n", vehicles[index].licensePlate);
-    printf("VIN: %s\n", vehicles[index].vin);
-    printf("Seat Capacity: %d\n", vehicles[index].seatCapacity);
-    printf("Rental Rate (per month): %.2lf\n", vehicles[index].rentalRate);
-    printf("Rental Terms and Conditions: %s\n", vehicles[index].rentToOwnTerms);
-    printf("Pick-up Location: %s\n", vehicles[index].location);
-    printf("Price to Own: %.2lf\n", vehicles[index].ownPrice);
-    printf("Interest Rate (if past due): %.2lf%%\n", vehicles[index].interestRate);
+    printf("Make: %s\n", vehicle[index].make);
+    printf("Model: %s\n", vehicle[index].model);
+    printf("Year: %d\n", vehicle[index].year);
+    printf("Color: %s\n", vehicle[index].color);
+    printf("License Plate: %s\n", vehicle[index].licensePlate);
+    printf("VIN: %s\n", vehicle[index].vin);
+    printf("Seat Capacity: %d\n", vehicle[index].seatCapacity);
+    printf("Rental Rate (per month): %.2lf\n", vehicle[index].rentalRate);
+    printf("Rental Terms and Conditions: %s\n", vehicle[index].rentToOwnTerms);
+    printf("Pick-up Location: %s\n", vehicle[index].location);
+    printf("Price to Own: %.2lf\n", vehicle[index].ownPrice);
+    printf("Interest Rate (if past due): %.2lf%%\n", vehicle[index].interestRate);
 
-    // Choose rental duration (in months) for Rent to Own
-    printf("\nEnter the number of months you would like to rent-to-own this vehicle (12, 24, 36 monts):");
-    int months;
-    scanf("%d", &months);
+    // Choose payment frequency
+    printf("\nChoose payment frequency (1 for Monthly, 2 for Annually): ");
+    int frequency;
+    scanf("%d", &frequency);
 
-    if (months != 12 || months != 24 || months != 36) {
-        printf("Invalid number of months.\n");
+    // Calculate payment based on frequency
+    double paymentAmount;
+    if (frequency == 1) {
+        paymentAmount = vehicle[index].price[7]; // Monthly payment
+        printf("\nMonthly Payment: %.2lf\n", paymentAmount);
+    } else if (frequency == 2) {
+        paymentAmount = vehicle[index].price[10]; // Annual payment
+        printf("\nAnnual Payment: %.2lf\n", paymentAmount);
+    } else {
+        printf("Invalid payment frequency choice.\n");
         return;
     }
 
-    // Calculate monthly payment (rentalRate * number of months)
-    double monthlyPayment = vehicles[index].pricing[7] * months;
+    // Confirm rental duration
+    printf("\nEnter the number of years you want to rent-to-own (1, 2, or 3 years): ");
+    int years;
+    scanf("%d", &years);
 
-    // Calculate total price with interest if overdue
-    printf("Interest Rate for overdue payments: %.2lf%%\n", vehicles[index].interestRate);
-    double overdueInterest = (monthlyPayment * (vehicles[index].interestRate / 100));
-
-    // Final price after interest
-    vehicle[index].totalPayment = monthlyPayment + overdueInterest;
-    
-    // Payment method (COD or Pickup)
-    printf("Choose payment method (1 for COD, 2 for Pickup): ");
-    int paymentChoice;
-    scanf("%d", &paymentChoice);
-
-    if (paymentChoice == 2) {
-        printf("Enter Pickup Location: ");
-        getchar(); // Clear newline
-        fgets(vehicles[index].location, sizeof(vehicles[index].location), stdin);
-        vehicles[index].location[strcspn(vehicles[index].location, "\n")] = '\0';
+    if (years < 1 || years > 3) {
+        printf("Invalid number of years.\n");
+        return;
     }
 
-    // Mark vehicle as rented and set the rented and return time
-    vehicles[index].isRented = 1;
-    vehicles[index].rentedTime = globalTime;
-    vehicles[index].returnTime = globalTime + (months * 30 * 24 * 60 * 60); // Set return time based on number of months
+    // Calculate total payment and overdue interest
+    vehicle[index].totalPayment = paymentAmount * years * (frequency == 1 ? 12 : 1);
+    vehicle[index].ownPrice = paymentAmount * years * (frequency == 1 ? 12 : 1);
+    vehicle[index].interestPrice = totalPayment * (vehicles[index].interestRate / 100);
+    vehicle[index].finalPrice = totalPayment + overdueInterest;
 
-    // Save vehicle data to file
-    saveAllVehiclesToFile(vehicles, vehicleCount);
+    // Mark vehicle as rented
+    vehicle[index].isRented = 1;
+
+    // Save updated vehicle data
+    saveVehicles(vehicle, vehicleCount);
 
     // Display rental details
     printf("\n--- Rent to Own Details ---\n");
-    printf("Total Rent-to-Own Price: %.2lf\n", monthlyPayment);
-    printf("Overdue Interest: %.2lf\n", overdueInterest);
-    printf("Final Total Price (including interest): %.2lf\n", finalPrice);
-    printf("Expected Return Time: %s\n", formatTime(vehicles[index].returnTime));
+    printf("Total Payment for %d years: %.2lf\n", years, vehicle[index].totalPayment);
+    printf("Overdue Interest (if applicable): %.2lf\n", vehicle[index].interestPrice);
+    printf("Final Total Price (including interest): %.2lf\n", vehicle[index].finalPrice);
 
     printf("\nVehicle rented to own successfully!\n");
 }
@@ -753,32 +754,49 @@ void ownerMenu(vehicle vehicle[]) {
     }
 }
 
-int saveVehicles(vehicle vehicle, int *index) {
-  FILE *file = fopen(VEHICLE_FILE, "a");
+int saveVehicles(vehicle vehicles[], int *index) {
+    FILE *file = fopen(VEHICLE_FILE, "a");
 
     if (file == NULL) {
-
         perror("Error opening file");
-        return;
+        return 1;
     }
 
-    fprintf(file, "%s,%s,%d,%s,%s,%s,%.2lf,%ld,%ld,%d\n,
-            vehicle[*index].make,
-            vehicle[*index].model,
-            vehicle[*index].year,
-            vehicle[*index].color,
-            vehicle[*index].licensePlate,
-            vehicle[*index].vin,
-            vehicle[*index].totalPayment, 
-            vehicles[*index].rentedTime, 
+    // Save vehicle details to file
+    fprintf(file, "%s,%s,%d,%s,%s,%s,%d,%ld,%ld,%d,%s,%s,%.2lf,%.2lf,%.2lf,%.2lf\n",
+            vehicles[*index].make,
+            vehicles[*index].model,
+            vehicles[*index].year,
+            vehicles[*index].color,
+            vehicles[*index].licensePlate,
+            vehicles[*index].vin,
+            vehicles[*index].seatCapacity,
+            vehicles[*index].rentedTime,
             vehicles[*index].returnTime,
-            vehicles[*index].isRented);
+            vehicles[*index].isRented,
+            vehicles[*index].location);
+            vehicles[*index].rentToOwnTerms,
+            vehicles[*index].interestRate,
+            vehicles[*index].totalPayment,
+            vehicles[*index].interestPrice,
+            vehicles[*index].finalPrice,
+            vehicles[*index].ownPrice);
+
+    // Save pricing array
+    for (int i = 0; i < 11; i++) {
+        fprintf(file, "%.2lf", vehicles[*index].pricing[i]);
+        if (i < 10) {
+            fprintf(file, ",");
+        }
+    }
 
     fclose(file);
     (*index)++;
+
+    return 0; // Success
 }
 
-int loadVehicles(vehicle vehicle[]) {
+int loadVehicles(vehicle vehicles[]) {
     FILE *file = fopen(VEHICLE_FILE, "r");
     if (file == NULL) {
         printf("No previous data found. Starting fresh.\n");
@@ -786,18 +804,35 @@ int loadVehicles(vehicle vehicle[]) {
     }
 
     int count = 0;
-    while (fscanf(file, "%49[^,],%49[^,],%d,%19[^,],%19[^,],%19[^,],%lf,%ld,%ld,%d\n",
+    while (fscanf(file, "%49[^,],%49[^,],%d,%19[^,],%19[^,],%19[^,],%d,%ld,%ld,%d,%99[^,]",
                   vehicles[count].make,
                   vehicles[count].model,
                   &vehicles[count].year,
                   vehicles[count].color,
                   vehicles[count].licensePlate,
                   vehicles[count].vin,
-                  &vehicles[count].totalPayment,
+                  &vehicles[count].seatCapacity,
                   &vehicles[count].rentedTime,
                   &vehicles[count].returnTime,
-                  &vehicles[count].isRented) == 10)
-                   {
+                  &vehicles[count].isRented,
+                  vehicles[count].location) == 11) {
+        
+        // Load pricing values up to the 7th index
+        for (int i = 0; i < 7; i++) {
+            if (fscanf(file, ",%lf", &vehicles[count].pricing[i]) != 1) {
+                printf("Error loading pricing data for vehicle %d.\n", count + 1);
+                fclose(file);
+                return count;
+            }
+        }
+
+        // Load rent-to-own terms
+        if (fscanf(file, ",%199[^\n]\n", vehicles[count].rentToOwnTerms) != 1) {
+            printf("Error loading terms for vehicle %d.\n", count + 1);
+            fclose(file);
+            return count;
+        }
+
         count++;
         if (count >= MAX_VEHICLES) {
             printf("Reached maximum vehicle storage capacity.\n");
@@ -809,6 +844,7 @@ int loadVehicles(vehicle vehicle[]) {
     printf("Data loaded from file successfully. %d records found.\n", count);
     return count;
 }
+
 
 void addVehicle(vehicle vehicle[], int *index) {
     if (*index >= MAX_VEHICLES) {
