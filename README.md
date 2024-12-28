@@ -1,66 +1,140 @@
-# Vehicle Rental System
 
-This program simulates a vehicle rental service where customers can rent vehicles, view rented vehicles, return vehicles, and manage their accounts. Employees can manage vehicle inventories and handle transactions. Owners can manage the entire operation, including profits and employee management.
+# 🚗 Car Rental & Rent-to-Own System
 
-## Features
-
-### Customer Features:
-- **Login:** Customers can log in with their username and password.
-- **Menu:** Once logged in, customers can access:
-  - Rent a vehicle (choose between "Rent-to-own" or "Standard Rent").
-  - View details of rented vehicles.
-  - Return a rented vehicle.
-  - Manage account settings (change username or password).
-  
-### Employee Features:
-- **Employee Menu:** Employees have access to various functionalities (currently empty).
-
-### Owner Features:
-- **Owner Menu:** Owners can manage vehicles, track profits, and hire employees (currently empty).
-
-### Vehicle Management:
-- Vehicles are available for rent or rent-to-own.
-- **Vehicle Stock:** The system tracks the stock of available vehicles for rent.
-
-### Transaction Handling:
-- Transactions are recorded each time a customer rents a vehicle.
+Welcome to the **Car Rental & Rent-to-Own System**! This system enables customers to rent or rent-to-own vehicles with detailed features like pricing, rental duration, and tracking. It also includes admin controls for vehicle management, overdue interest rates, and various user roles.
 
 ---
 
-## Code Structure
+## 🌟 Features Overview
 
-### `mainMenu(customer customer[])`
-- Displays the main menu to the user, allowing navigation to customer, employee, or owner menus.
+1. **Customer, Cashier, and Maintenance Management**  
+   - Separate structs and functionalities for customers, cashiers, and maintenance staff.
+   - User login and authentication.
 
-### `customerLogin(customer customer[])`
-- Allows customers to log in using their username and password. If successful, the customer is directed to their menu.
+2. **Vehicle Management**  
+   - Add, delete, or view vehicles in the system.  
+   - Track details such as make, model, year, seat capacity, and VIN.
 
-### `customerMenu(customer customer[], int num)`
-- Allows customers to access different actions like renting a vehicle, checking rented vehicles, returning vehicles, and managing account settings.
+3. **Rental Options**  
+   - Flexible rental durations:
+     - ⏳ Short-term: 3, 6, 12, or 24 hours.
+     - 🗓️ Long-term: 3 days, 7 days, 2 weeks, 1 month, 3 months, 6 months, or 1 year.
+   - Real-time rental tracking using timestamps.
 
-### `rentVehicleMenu()`
-- Allows customers to rent a vehicle, with the option to choose between "Rent-to-own" or "Standard Rent".
+4. **Rent-to-Own**  
+   - Display available vehicles with complete details.  
+   - Price to own pre-defined in the vehicle struct.  
+   - Monthly or annual payment modes.  
+   - Overdue interest rates configured by admins.  
 
-### `accountSettings(customer customer[], int num)`
-- Allows customers to change their username or password.
-
-### `employeeMenu()`, `ownerMenu(vehicle vehicle[])`, `cashierMenu()`, `maintenanceMenu()`
-- These functions are placeholders and are coming soon.
-  
----
-
-## Coming Soon Features
-
-- **Employee Menu:** Functionality for employees to manage vehicles and transactions (currently empty).
-- **Owner Menu:** Functionality for owners to manage vehicles, track profits, and hire employees (currently empty).
-- **Cashier Menu:** Functionality to process payments (currently empty).
-- **Maintenance Menu:** Functionality for vehicle maintenance (currently empty).
+5. **File Management**  
+   - Vehicles saved to and loaded from `vehicles.txt`.  
+   - Real-time time tracking saved to `time.txt`.
 
 ---
 
-## Compilation and Execution
+## 📂 File Structure
 
-1. Clone or download the repository.
-2. Compile the code using a C compiler, for example:
+- **`main.c`**: Main implementation file.
+- **`vehicles.txt`**: Stores vehicle data.
+- **`time.txt`**: Tracks time-related data.
+
+---
+
+## 🛠️ Detailed Functions
+
+### 1. Vehicle Management
+#### `addVehicle(vehicle vehicles[], int *vehicleCount)`
+- Adds a new vehicle to the system.  
+- Includes details like:
+  - Make, model, year, color, license plate, VIN.
+  - Rental pricing (hourly, daily, monthly, etc.).
+  - Pickup location and seat capacity.
+
+#### `deleteVehicle(vehicle vehicles[], int *vehicleCount)`
+- Deletes a vehicle by license plate and VIN.  
+- Ensures data integrity by shifting array elements.
+
+#### `loadVehicles(vehicle vehicles[])`
+- Loads vehicles from `vehicles.txt`.  
+- Supports up to `MAX_VEHICLES`.
+
+#### `saveVehicles(vehicle vehicles[], int vehicleCount)`
+- Saves all vehicle data to `vehicles.txt`.  
+- Ensures all attributes are stored, including rental details.
+
+---
+
+### 2. Rent-to-Own System
+#### `rentToOwnMenu(vehicle vehicles[], int vehicleCount, customer customers[], int customerIndex)`
+- Displays available vehicles for rent-to-own.  
+- Allows customers to:
+  - Select a vehicle.
+  - Choose payment mode (monthly or annual).  
+  - Review terms and conditions.  
+  - Calculate total cost including overdue interest.
+
+---
+
+### 3. Real-Time Tracking
+#### `logTime()`
+- Logs the current time to `time.txt` at regular intervals.  
+- Useful for calculating rental duration and overdue interest.
+
+---
+
+### 4. User Management
+#### `customerLogin(customer customers[], int *customerCount)`
+- Handles customer login and authentication.
+
+#### `registerCustomer(customer customers[], int *customerCount)`
+- Registers a new customer with unique credentials.
+
+---
+
+## 💰 Pricing Options
+
+| **Duration**      | **Pricing Index** | **Description** |
+|--------------------|-------------------|------------------|
+| 3 Hours           | 0                 | Short-term rental. |
+| 6 Hours           | 1                 | Half-day rental. |
+| 12 Hours          | 2                 | Full-day rental. |
+| 1 Day             | 3                 | 24-hour rental. |
+| 3 Days            | 4                 | Short trip. |
+| 7 Days            | 5                 | Weekly rental. |
+| 1 Month           | 6                 | Ideal for long trips. |
+| 3 Months          | 7                 | Quarterly rental. |
+| 6 Months          | 8                 | Half-year rental. |
+| 1 Year            | 9                 | Annual rental. |
+
+---
+
+## 🔧 Setup and Compilation
+
+1. Clone the repository or download the code.
+2. Compile using:
    ```bash
-   gcc vehicle_rental_system.c -o vehicle_rental_system
+   gcc main.c -o car_rental_system
+   ```
+3. Run the program:
+   ```bash
+   ./car_rental_system
+   ```
+
+---
+
+## 📝 Notes
+- **File Dependencies**: Ensure `vehicles.txt` and `time.txt` are accessible.  
+- **Error Handling**: The system includes basic error checks (e.g., invalid input, file access issues).  
+- **Admin Control**: Overdue interest rates and vehicle prices are set by the admin.
+
+---
+
+## 🎯 Future Enhancements
+- Add graphical user interface (GUI).  
+- Implement online payment gateways.  
+- Integrate GPS tracking for vehicles.
+
+---
+
+Enjoy managing your vehicle rentals with this comprehensive system! 😊
