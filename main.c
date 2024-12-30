@@ -9,12 +9,14 @@
 
 #define TIME_FILE "time.txt"
 #define VEHICLE_FILE "vehicles.txt"
+#define EMPLOYEE_FILE "employee.txt"
 
 #define MAX_CUSTOMERS 100
 #define MAX_EMPLOYEE 100
 #define MAX_VEHICLES 100
 #define MAX_CASHIERS 50
 #define MAX_MAINTENANCE 50
+#define MAX_LOGS 30
 
 // Rental Duration Options (Pricing for each vehicle)
 typedef enum {
@@ -74,12 +76,23 @@ typedef struct {
     float salary;
     char contractStart[10];
     char contractEnd[10];
+   
+    // Attendance Log (dynamic arrays to store multiple entries)
+    char clockIn[MAX_LOGS][6];    // Store clock-in times (HH:MM)
+    char clockOut[MAX_LOGS][6];   // Store clock-out times (HH:MM)
+    int clockLogsCount;           // Count of clock-in/out logs
+
+    int daysAbsent;               // Number of days absent
+    char absenceDates[MAX_LOGS][11];  // Store dates of absences
+    int vacationDays;             // Number of vacation days taken
+    char vacationDates[MAX_LOGS][11]; // Store dates of vacation
 } employee;
 
 void saveTime(int signum);
 void loadTime();
 void updateTime();
 char *formatTime(time_t timeValue);
+void getMonthAndYear(time_t t, int *month, int *year);
 void mainMenu(customer customer[]);
 void customerLogin(customer customer[]);
 void customerMenu(customer customer[], int num);
@@ -92,7 +105,7 @@ void loginMaintenance();
 void employeeMenu();
 void cashierMenu();
 void maintenanceMenu();
-void ownerMenu(vehicle vehicle[]);
+void ownerMenu(vehicle vehicle[], employee employee);
 
 void rentToOwnMenu(vehicle vehicles[], int vehicleCount, customer customers[], int customerIndex);
 void standardRentFeature();
@@ -108,9 +121,11 @@ void formatDate(time_t rawTime, char *formattedDate);
 int loadVehicles(vehicle vehicle[]);
 void addVehicle(vehicle vehicle[], int *index);
 void deleteVehicle(vehicle vehicle[]);
-void profitAnalytics(vehicle vehicle[]);
-void hireEmployee(employee employee[]);
-void manageEmployee(employee employee[]);
+void profitAnalytics(vehicle vehicle[], int numVehicles);
+void hireEmployee(employee employee[], int *numEmployees);
+void saveEmployee(employee employee[], int numEmployees);
+int loadEmployee(employee employee[]);
+void monitorEmployee(employee employee[]);
 
 void clearScreen() {
     system("cls");
@@ -197,6 +212,7 @@ int main() {
 void mainMenu(customer customer[]) {
     int choice;
     vehicle vehicle[MAX_VEHICLES];
+    employee employee[MAX_EMPLOYEE];
     clearScreen();
 
     do {
@@ -223,7 +239,7 @@ void mainMenu(customer customer[]) {
                 maintenanceMenu();
                 break;
             case 4:
-                ownerMenu(vehicle);
+                ownerMenu(vehicle,employee);
                 break;
             case 5:
                 printf("Exiting... Have a good day!\n");
@@ -712,10 +728,11 @@ void accountSettings(customer customer[], int num) {
 
 }
 
-void ownerMenu(vehicle vehicle[]) {
+void ownerMenu(vehicle vehicle[], employee employee[]) {
 
     int choice;
     int vehicleCount = loadVehicles(vehicle);
+    int employeeCount = loadEmployee(employee);
     employee employee[MAX_EMPLOYEE];
     clearScreen();
 
@@ -740,13 +757,13 @@ void ownerMenu(vehicle vehicle[]) {
         deleteVehicle(vehicle);
         break;
       case 3:
-        profitAnalytics(vehicle);
+        profitAnalytics(vehicle,vehicleCount);
         break;
       case 4:
-        hireEmployee(employee);
+        hireEmployee(employee, employeeCount);
         break;
       case 5:
-        manageEmployee(employee);
+        monitorEmployee(employee);
         break;
       default:
         printf("\t\t\t\t\t     INVALID CHOICE. PLEASE TRY AGAIN");
@@ -845,7 +862,6 @@ int loadVehicles(vehicle vehicles[]) {
     return count;
 }
 
-
 void addVehicle(vehicle vehicle[], int *index) {
     if (*index >= MAX_VEHICLES) {
         printf("Vehicle storage is full.\n");
@@ -931,7 +947,6 @@ void addVehicle(vehicle vehicle[], int *index) {
     (*index)++;
 }
 
-
 void deleteVehicle(vehicle vehicle[], int *count) {
     if (*count == 0) {
         printf("No vehicles to delete.\n");
@@ -973,17 +988,183 @@ void deleteVehicle(vehicle vehicle[], int *count) {
     printf("Vehicle deleted successfully and data saved to file.\n");
 }
 
-void profitAnalytics(vehicle vehicle[]) {
-  printf("Features Coming Soon");
+void getMonthAndYear(time_t t, int *month, int *year) {
+    struct tm *timeInfo = localtime(&t);
+    *month = timeInfo->tm_mon + 1; // tm_mon is zero-based
+    *year = timeInfo->tm_year + 1900; // tm_year is years since 1900
 }
 
-void hireEmployee(employee employee[]) {
-  printf("Features Coming Soon");
+void profitAnalytics(vehicle vehicles[], int numVehicles) {
+    double totalRevenue = 0.0;
+    double totalInterest = 0.0;
+    double totalRentToOwnProfit = 0.0;
+    int rentalsThisMonth = 0;
+    int activeRentals = 0;
+
+    // Get the current month and year
+    int currentMonth, currentYear;
+    getMonthAndYear(globalTime, &currentMonth, &currentYear);
+
+    for (int i = 0; i < numVehicles; i++) {
+        vehicle v = vehicle[i];
+
+        // Extract month and year from rentedTime and returnTime
+        int rentedMonth, rentedYear, returnMonth, returnYear;
+        getMonthAndYear(v.rentedTime, &rentedMonth, &rentedYear);
+        getMonthAndYear(v.returnTime, &returnMonth, &returnYear);
+
+        // Check if the rental activity happened this month
+        if ((rentedYear == currentYear && rentedMonth == currentMonth) || 
+            (returnYear == currentYear && returnMonth == currentMonth)) {
+            
+            rentalsThisMonth++;
+
+            // Add revenue and interest for rentals this month
+            totalRevenue += v.totalPayment;
+            totalInterest += v.interestPrice;
+
+            // If the car is rented to own, calculate potential profit
+            if (v.ownPrice > 0) {
+                double rentToOwnProfit = v.finalPrice - v.ownPrice;
+                totalRentToOwnProfit += rentToOwnProfit;
+            }
+        }
+
+        // Check if the vehicle is actively rented
+        if (v.isRented) {
+            activeRentals++;
+        }
+    }
+
+    // Print monthly summary
+    printf("===== Profit Analytics for %02d/%04d =====\n", currentMonth, currentYear);
+    printf("Total Rentals This Month: %d\n", rentalsThisMonth);
+    printf("Total Revenue (Rental Payments): $%.2f\n", totalRevenue);
+    printf("Total Interest Income: $%.2f\n", totalInterest);
+    printf("Total Rent-to-Own Profit: $%.2f\n", totalRentToOwnProfit);
+    printf("Active Rentals: %d\n", activeRentals);
+    printf("Total Fleet Size: %d\n", numVehicles);
+    printf("=========================================\n");
 }
 
-void manageEmployee(employee employee[]) {
-  printf("Features Coming Soon");
+void hireEmployee(employee employee[], int *numEmployees) {
+    // Input data for a new employee
+    printf("Enter employee name: ");
+    scanf("%s", employee[*numEmployees].name);
+
+    printf("Enter employee role (cashier or maintenance): ");
+    scanf("%s", employee[*numEmployees].role);
+
+    // Set salary based on role (example: Cashiers and maintenance might have different rates)
+    if (strcmp(employeeList[*numEmployees].role, "cashier") == 0) {
+        employee[*numEmployees].salary = 1000.0f; // Cashier fixed salary
+    } else if (strcmp(employee[*numEmployees].role, "maintenance") == 0) {
+        employee[*numEmployees].salary = 1500.0f; // Maintenance fixed salary
+    } else {
+        printf("Invalid role! Setting default salary.\n");
+        employee[*numEmployees].salary = 1200.0f; // Default fixed salary
+    }
+
+    // Input contract dates
+    printf("Enter contract start date (YYYY-MM-DD): ");
+    scanf("%s", employee[*numEmployees].contractStart);
+
+    printf("Enter contract end date (YYYY-MM-DD): ");
+    scanf("%s", employee[*numEmployees].contractEnd);
+
+    // Increment number of employees
+    (*numEmployees)++;
+    
+    saveEmployeeData(employee, *numEmployees);
+
+    // Confirmation message
+    printf("Employee %s hired successfully as a %s.\n", employee[*numEmployees - 1].name, employee[*numEmployees - 1].role);
 }
+
+void saveEmployee(employee employee[], int numEmployees) {
+    FILE *file = fopen("employee_data.txt", "a"); // Open the file in append mode
+
+    if (file == NULL) {
+        printf("Error opening file to save employee data.\n");
+        return;
+    }
+
+    for (int i = 0; i < numEmployees; i++) {
+        // Write the employee data to the file
+        fprintf(file, "Name: %s\n", employee[i].name);
+        fprintf(file, "Role: %s\n", employee[i].role);
+        fprintf(file, "Salary: %.2f\n", employee[i].salary);
+        fprintf(file, "Contract Start: %s\n", employee[i].contractStart);
+        fprintf(file, "Contract End: %s\n", employee[i].contractEnd);
+        fprintf(file, "----------------------\n");  // Add a separator for each employee
+    }
+
+    fclose(file); // Close the file after saving
+    printf("Employee data saved successfully.\n");
+}
+
+int loadEmployee(employee employee[]) {
+    FILE *file = fopen(FILE_PATH, "r");  // Open the file in read mode
+    int numEmployees = 0;
+
+    if (file == NULL) {
+        printf("Error opening file to load employee data.\n");
+        return numEmployees;  // Return 0 if the file doesn't exist or can't be opened
+    }
+
+    // Read employee data from the file
+    while (fscanf(file, "Name: %49[^\n]\n", employee[numEmployees].name) == 1) {
+        fscanf(file, "Role: %19[^\n]\n", employee[numEmployees].role);
+        fscanf(file, "Salary: %f\n", &employee[numEmployees].salary);
+        fscanf(file, "Contract Start: %9[^\n]\n", employee[numEmployees].contractStart);
+        fscanf(file, "Contract End: %9[^\n]\n", employee[numEmployees].contractEnd);
+        fscanf(file, "----------------------\n");  // Skip the separator line
+
+        numEmployees++;
+    }
+
+    fclose(file); // Close the file after reading
+    return numEmployees;  // Return the number of employees loaded
+}
+
+void monitorEmployee(employee employee[], int numEmployees) {
+    for (int i = 0; i < numEmployees; i++) {
+        printf("Employee Name: %s\n", employee[i].name);
+        printf("Role: %s\n", employee[i].role);
+        printf("Hours Worked: %d\n", employee[i].hoursWorked);
+        printf("Salary: %.2f\n", employee[i].salary);
+        printf("Contract Period: %s to %s\n", employee[i].contractStart, employees[i].contractEnd);
+
+        // Display clock-in/out logs
+        printf("\nClock-In/Out Logs:\n");
+        for (int j = 0; j < employee[i].clockLogsCount; j++) {
+            printf("Day %d - Clock-in: %s, Clock-out: %s\n", j + 1, employee[i].clockIn[j], employee[i].clockOut[j]);
+        }
+
+        // Display absenteeism
+        printf("\nAbsences:\n");
+        if (employee[i].daysAbsent > 0) {
+            for (int j = 0; j < employee[i].daysAbsent; j++) {
+                printf("Absent on: %s\n", employee[i].absenceDates[j]);
+            }
+        } else {
+            printf("No absences recorded.\n");
+        }
+
+        // Display vacation days
+        printf("\nVacation Days:\n");
+        if (employee[i].vacationDays > 0) {
+            for (int j = 0; j < employee[i].vacationDays; j++) {
+                printf("Vacation on: %s\n", employee[i].vacationDates[j]);
+            }
+        } else {
+            printf("No vacation days recorded.\n");
+        }
+
+        printf("\n-----------------------------------\n");
+    }
+}
+
 
 void rentedVehicleDetails(int customerId) {
 
